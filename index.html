@@ -322,7 +322,7 @@ function renderTabs(){$tabs.innerHTML=TABS.map(function(t){return '<button role=
 
 function prevText(prev){
   if(!prev)return 'Sin registro anterior';
-  return 'Anterior ('+short(prev.date)+'): '+prev.sets.map(function(s){return s.kg+'×'+s.reps}).join(' · ');
+  return 'Anterior ('+short(prev.date)+'): '+prev.sets.map(function(s){return s.kg+' '+UNIT()+' × '+s.reps}).join(' · ');
 }
 function prBadge(id,date){
   var h=history(id,date);if(!h.length)return '';
@@ -361,7 +361,7 @@ function viewFocus(){
   out+='<div class="muted small">Meta '+esc(e[2])+' · descanso '+esc(e[3])+'</div><div class="muted small">'+esc(prevText(prev))+'</div>';
   arr.forEach(function(s,i){
     var ph=prev?(prev.sets[i]||prev.sets[prev.sets.length-1]):null;
-    out+='<div class="sc'+(s.done?' on':'')+'" data-i="'+i+'"><div class="sch"><b>Serie '+(i+1)+'</b><span class="prev">'+(ph?'Anterior '+esc(ph.kg)+'×'+esc(ph.reps):'Sin registro previo')+'</span></div><div class="st2">'+
+    out+='<div class="sc'+(s.done?' on':'')+'" data-i="'+i+'"><div class="sch"><b>Serie '+(i+1)+'</b><span class="prev">'+(ph?'Anterior '+esc(ph.kg)+' '+UNIT()+' × '+esc(ph.reps):'Sin registro previo')+'</span></div><div class="st2">'+
      '<div class="st"><span class="lb">'+UL().toUpperCase()+'</span><button class="m" data-step="kg|-1" aria-label="Menos '+UL()+'">–</button><input type="text" inputmode="decimal" data-f="kg" placeholder="'+(ph?esc(ph.kg):'0')+'" value="'+esc(s.kg)+'" aria-label="'+UL()+'"><button class="p" data-step="kg|1" aria-label="Más '+UL()+'">+</button></div>'+
      '<div class="st"><span class="lb">REPS</span><button class="m" data-step="reps|-1" aria-label="Menos repeticiones">–</button><input type="text" inputmode="numeric" data-f="reps" placeholder="'+(ph?esc(ph.reps):'0')+'" value="'+esc(s.reps)+'" aria-label="Repeticiones"><button class="p" data-step="reps|1" aria-label="Más repeticiones">+</button></div></div>'+
      '<button class="dnb" data-done="'+i+'" aria-pressed="'+(!!s.done)+'">'+(s.done?'Hecha ✓':'Marcar serie hecha')+'</button></div>';
@@ -376,6 +376,7 @@ function viewFocus(){
   return out;
 }
 function isStandalone(){return window.navigator.standalone===true||(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)}
+var VERSION='v3 · series en libras';
 function viewHoy(){
   var p=dayPlan(cur),d=day(cur),sc=score(cur),ph=phase(cur),left=Math.max(0,diffDays(cur,TRIP)),h='';
   var dis=false;try{dis=localStorage.getItem(LS+'-inst')==='1'}catch(e){}
@@ -393,6 +394,7 @@ function viewHoy(){
   });
   h+='<div class="check" style="cursor:default"><span class="box" id="stbox" style="'+(d.steps>=10000?'background:var(--good);border-color:var(--good);color:#fff':'')+'">✓</span><span style="flex:1;min-width:0"><span class="t">Pasos: meta 10.000</span><span class="sub">Mira el contador de tu celular al final del día.</span>'+
    '<input type="number" inputmode="numeric" id="steps" min="0" step="100" placeholder="Pasos de hoy" value="'+(d.steps||'')+'" style="margin-top:8px;max-width:180px"></span></div></div>';
+  h+='<div class="small muted" style="text-align:center;margin-top:16px">'+VERSION+' · unidad: '+UL()+'</div>';
   h+='<div class="card" style="margin-top:12px"><label class="eyebrow" for="note">Nota del día</label><input type="text" id="note" placeholder="Energía, hambre, qué ajustar…" value="'+esc(d.note)+'" style="margin-top:6px"></div>';
   return h;
 }
@@ -470,7 +472,7 @@ function strengthView(){
   var rows=[];
   allExIds().forEach(function(id){var hs=history(id,null);if(!hs.length)return;var st=hs.map(function(x){return sessionStats(x.sets)}),b=Math.max.apply(null,st.map(function(s){return s.e1}));rows.push({id:id,n:hs.length,best:b,delta:b-st[0].e1,top:Math.max.apply(null,st.map(function(s){return s.top}))})});
   h+='<h2>Récords</h2><div class="card">';
-  if(rows.length)h+='<div class="scroll"><table><thead><tr><th>Ejercicio</th><th class="n">1RM est.</th><th class="n">Cambio</th></tr></thead><tbody>'+rows.map(function(r){return '<tr><td>'+esc(EXMAP[r.id][1])+'<div class="small muted">'+r.n+' ses. · mayor peso '+r.top+' kg</div></td><td class="n">'+(Math.round(r.best*10)/10)+'</td><td class="n">'+(r.n>1?((r.delta>=0?'+':'')+(Math.round(r.delta*10)/10)):'—')+'</td></tr>'}).join('')+'</tbody></table></div>';
+  if(rows.length)h+='<div class="scroll"><table><thead><tr><th>Ejercicio</th><th class="n">1RM est.</th><th class="n">Cambio</th></tr></thead><tbody>'+rows.map(function(r){return '<tr><td>'+esc(EXMAP[r.id][1])+'<div class="small muted">'+r.n+' ses. · mayor peso '+r.top+' '+UNIT()+'</div></td><td class="n">'+(Math.round(r.best*10)/10)+'</td><td class="n">'+(r.n>1?((r.delta>=0?'+':'')+(Math.round(r.delta*10)/10)):'—')+'</td></tr>'}).join('')+'</tbody></table></div>';
   else h+='<p class="muted" style="margin:0">Todavía no hay datos.</p>';
   h+='</div>';
   /* volumen semanal */
@@ -510,7 +512,7 @@ function histView(){
       body+='<button class="mini" data-hrm="'+dt+'|'+id+'">'+(armed===key?'¿Seguro? Toca otra vez':'Quitar ejercicio del día')+'</button></div>';
     });
     body+='<div class="hex"><label class="eyebrow" for="mv-'+dt+'">Mover este día a otra fecha</label><div class="row" style="margin-top:6px"><input type="date" id="mv-'+dt+'" min="'+START+'" max="'+END+'" value="'+dt+'" style="font-size:16px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);min-width:0;flex:1"><button class="btn ghost" data-hmove="'+dt+'">Mover</button></div></div>';
-    return '<div class="card hday"><details'+(histOpen===dt?' open':'')+' data-hd="'+dt+'"><summary><span><b>'+esc(pretty(dt))+'</b><span class="small muted" style="display:block;font-weight:400">'+esc(p.title)+' · '+thou(dayVolume(dt))+' kg</span></span></summary><div style="margin-top:8px">'+body+'</div></details></div>';
+    return '<div class="card hday"><details'+(histOpen===dt?' open':'')+' data-hd="'+dt+'"><summary><span><b>'+esc(pretty(dt))+'</b><span class="small muted" style="display:block;font-weight:400">'+esc(p.title)+' · '+thou(dayVolume(dt))+' '+UNIT()+'</span></span></summary><div style="margin-top:8px">'+body+'</div></details></div>';
   }).join('')+'</div>';
 }
 function viewProg(){
