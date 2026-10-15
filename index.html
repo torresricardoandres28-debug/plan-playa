@@ -265,8 +265,10 @@ function items(s,p){
 
 /* ---------- estado ---------- */
 var LS='plan-playa-app-v1';
-var state={days:{},meas:{}};
-try{var raw=localStorage.getItem(LS);if(raw){var o=JSON.parse(raw);state.days=o.days||{};state.meas=o.meas||{}}}catch(e){}
+var state={days:{},meas:{},unit:'lb'};
+try{var raw=localStorage.getItem(LS);if(raw){var o=JSON.parse(raw);state.days=o.days||{};state.meas=o.meas||{};state.unit=o.unit==='kg'?'kg':'lb'}}catch(e){}
+var UNIT=function(){return state.unit==='kg'?'kg':'lb'};
+var UL=function(){return UNIT()==='lb'?'libras':'kilos'};
 function save(){try{localStorage.setItem(LS,JSON.stringify(state))}catch(e){}}
 function day(date){var d=state.days[date]||(state.days[date]={});d.chk=d.chk||{};d.log=d.log||{};d.exnote=d.exnote||{};d.steps=d.steps||0;d.note=d.note||'';return d}
 function ensureLog(date,e){var d=day(date),a=d.log[e[0]]||(d.log[e[0]]=[]);while(a.length<setsOf(e))a.push({kg:'',reps:'',done:false});return a}
@@ -334,7 +336,7 @@ function summaryHtml(date,p){
   var vol=dayVolume(date),pv=0,pd=null;
   for(var dt=addDays(date,-1);dt>=START;dt=addDays(dt,-1)){if(dayPlan(dt).kind===p.kind&&dayVolume(dt)>0){pv=dayVolume(dt);pd=dt;break}}
   var cmp=pv&&vol?((vol>=pv?'+':'')+Math.round((vol/pv-1)*100)+' %'):'—';
-  return '<div class="sum"><div><b>'+done+'/'+tot+'</b><span>series</span></div><div><b>'+thou(vol)+'</b><span>kg de volumen</span></div><div><b>'+cmp+'</b><span>'+(pd?'vs '+short(pd):'vs sesión anterior')+'</span></div></div>';
+  return '<div class="sum"><div><b>'+done+'/'+tot+'</b><span>series</span></div><div><b>'+thou(vol)+'</b><span>'+UNIT()+' de volumen</span></div><div><b>'+cmp+'</b><span>'+(pd?'vs '+short(pd):'vs sesión anterior')+'</span></div></div>';
 }
 function firstPending(date,p){
   var S=SESS[p.kind];
@@ -360,7 +362,7 @@ function viewFocus(){
   arr.forEach(function(s,i){
     var ph=prev?(prev.sets[i]||prev.sets[prev.sets.length-1]):null;
     out+='<div class="sc'+(s.done?' on':'')+'" data-i="'+i+'"><div class="sch"><b>Serie '+(i+1)+'</b><span class="prev">'+(ph?'Anterior '+esc(ph.kg)+'×'+esc(ph.reps):'Sin registro previo')+'</span></div><div class="st2">'+
-     '<div class="st"><span class="lb">KILOS</span><button class="m" data-step="kg|-1" aria-label="Menos kilos">–</button><input type="text" inputmode="decimal" data-f="kg" placeholder="'+(ph?esc(ph.kg):'0')+'" value="'+esc(s.kg)+'" aria-label="Kilos"><button class="p" data-step="kg|1" aria-label="Más kilos">+</button></div>'+
+     '<div class="st"><span class="lb">'+UL().toUpperCase()+'</span><button class="m" data-step="kg|-1" aria-label="Menos '+UL()+'">–</button><input type="text" inputmode="decimal" data-f="kg" placeholder="'+(ph?esc(ph.kg):'0')+'" value="'+esc(s.kg)+'" aria-label="'+UL()+'"><button class="p" data-step="kg|1" aria-label="Más '+UL()+'">+</button></div>'+
      '<div class="st"><span class="lb">REPS</span><button class="m" data-step="reps|-1" aria-label="Menos repeticiones">–</button><input type="text" inputmode="numeric" data-f="reps" placeholder="'+(ph?esc(ph.reps):'0')+'" value="'+esc(s.reps)+'" aria-label="Repeticiones"><button class="p" data-step="reps|1" aria-label="Más repeticiones">+</button></div></div>'+
      '<button class="dnb" data-done="'+i+'" aria-pressed="'+(!!s.done)+'">'+(s.done?'Hecha ✓':'Marcar serie hecha')+'</button></div>';
   });
@@ -446,7 +448,7 @@ var BASE={peso:99.9,grasa:30.1,visc:19.5,musc:35.7};
 var PROJ={peso:[99.9,98.9,98.1,97.4,97.2],grasa:[30.1,29.6,29.2,28.7,28.5],cint:[0,-1.5,-3,-4,-4.5]};
 function slot(k){var s=state.meas[k]||{};if(k==='base')return {peso:s.peso!=null?s.peso:BASE.peso,grasa:s.grasa!=null?s.grasa:BASE.grasa,visc:s.visc!=null?s.visc:BASE.visc,musc:s.musc!=null?s.musc:BASE.musc,cint:s.cint};return s}
 function allExIds(){var a=[];Object.keys(SESS).forEach(function(k){SESS[k].ex.forEach(function(e){a.push(e[0])})});return a}
-var METR={e1:['1RM estimado','1RM estimado (kg)'],top:['Carga máxima','Carga máxima (kg)'],vol:['Volumen','Volumen (kg)'],last:['Última serie','Última serie (kg)']};
+var METR={e1:['1RM estimado','1RM estimado'],top:['Carga máxima','Carga máxima'],vol:['Volumen','Volumen'],last:['Última serie','Última serie']};
 function strengthView(){
   var h='';
   var opts=Object.keys(SESS).map(function(k){return '<optgroup label="'+esc(SESS[k].name)+'">'+SESS[k].ex.map(function(e){return '<option value="'+e[0]+'"'+(e[0]===pex?' selected':'')+'>'+esc(e[1])+'</option>'}).join('')+'</optgroup>'}).join('');
@@ -457,9 +459,9 @@ function strengthView(){
   h+='<div class="chips" role="group" aria-label="Métrica">'+Object.keys(METR).map(function(k){return '<button data-pm="'+k+'" aria-pressed="'+(pm===k)+'">'+METR[k][0]+'</button>'}).join('')+'</div>';
   if(hist.length){
     var st=hist.map(function(x){return sessionStats(x.sets)}),best=Math.max.apply(null,st.map(function(s){return s.e1})),first=st[0],lastS=hist[hist.length-1];
-    h+='<div class="sum" style="margin-top:4px"><div><b>'+(Math.round(best*10)/10)+'</b><span>mejor 1RM estimado (kg)</span></div><div><b>'+Math.max.apply(null,st.map(function(s){return s.top}))+'</b><span>mayor peso (kg)</span></div><div><b>'+((best>=first.e1?'+':'')+(Math.round((best-first.e1)*10)/10))+'</b><span>cambio en el rango</span></div></div>';
+    h+='<div class="sum" style="margin-top:4px"><div><b>'+(Math.round(best*10)/10)+'</b><span>mejor 1RM estimado ('+UNIT()+')</span></div><div><b>'+Math.max.apply(null,st.map(function(s){return s.top}))+'</b><span>mayor peso ('+UNIT()+')</span></div><div><b>'+((best>=first.e1?'+':'')+(Math.round((best-first.e1)*10)/10))+'</b><span>cambio en el rango</span></div></div>';
     h+='<p class="small muted" style="margin:0">Última carga ('+short(lastS.date)+'): '+lastS.sets.map(function(s){return s.kg+'×'+s.reps}).join(' · ')+'</p>';
-    if(hist.length>1)h+=lineChart(hist.map(function(x){return short(x.date)}),[{vals:st.map(function(s){return Math.round(s[pm]*10)/10}),color:'var(--accent)'}],{aria:METR[pm][1]+' de '+e[1]})+'<div class="small muted" style="text-align:center">'+METR[pm][1]+'</div>';
+    if(hist.length>1)h+=lineChart(hist.map(function(x){return short(x.date)}),[{vals:st.map(function(s){return Math.round(s[pm]*10)/10}),color:'var(--accent)'}],{aria:METR[pm][1]+' de '+e[1]})+'<div class="small muted" style="text-align:center">'+METR[pm][1]+' ('+UNIT()+')</div>';
     else h+='<p class="muted small" style="margin:0">Una sesión en este rango. En la segunda aparece la gráfica de progreso.</p>';
     h+='<div class="scroll"><table><thead><tr><th>Fecha</th><th>Series</th><th class="n">Volumen</th></tr></thead><tbody>'+hist.slice().reverse().slice(0,8).map(function(x){return '<tr><td>'+short(x.date)+'</td><td>'+x.sets.map(function(s){return s.kg+'×'+s.reps}).join(' · ')+'</td><td class="n">'+thou(sessionStats(x.sets).vol)+'</td></tr>'}).join('')+'</tbody></table></div>';
   }else h+='<p class="muted" style="margin:0">Aún no hay series registradas de este ejercicio'+(all.length?' en este rango':'')+'. Marca una serie como hecha en Hoy para empezar.</p>';
@@ -474,7 +476,7 @@ function strengthView(){
   /* volumen semanal */
   var wk=[],lb=[];
   for(var w=0;w<5;w++){var st0=addDays('2026-10-05',w*7),v=0;for(var k=0;k<7;k++)v+=dayVolume(addDays(st0,k));wk.push(v);lb.push(short(st0))}
-  h+='<h2>Volumen por semana</h2><div class="card"><p class="muted small">Kilos totales levantados (peso × repeticiones). Semanas que empiezan el lunes.</p>'+barChart(lb,wk)+'</div>';
+  h+='<h2>Volumen por semana</h2><div class="card"><p class="muted small">Total levantado en '+UL()+' (peso × repeticiones). Semanas que empiezan el lunes.</p>'+barChart(lb,wk)+'</div>';
   return h;
 }
 function bodyView(){
@@ -490,19 +492,20 @@ function bodyView(){
       return '<div><label for="m-'+sl[0]+'-'+f[0]+'">'+f[1]+'</label><input type="number" inputmode="decimal" step="0.1" id="m-'+sl[0]+'-'+f[0]+'" data-m="'+sl[0]+'|'+f[0]+'" value="'+(s[f[0]]!=null&&s[f[0]]!==''?s[f[0]]:'')+'"></div>'}).join('')+'</div></div>';
   });
   h+='<h2>Qué esperar</h2><div class="card"><ul class="plain"><li><b>Grasa:</b> entre 2 y 3 kg si cumples. Es un cambio visible, no una transformación.</li><li><b>Cintura:</b> entre 3 y 5 cm menos.</li><li><b>Grasa visceral:</b> puede bajar uno o dos puntos. La balanza la estima y a veces no se mueve en un mes.</li><li><b>Peso:</b> las primeras semanas pueden mostrar menos de lo esperado porque el entreno retiene agua. Confía en la cintura.</li><li><b>Exámenes:</b> hazte perfil lipídico, glucosa y triglicéridos. Con tu historial de HDL bajo conviene tenerlos.</li></ul></div>';
+  h+='<h2>Unidad de peso en el gimnasio</h2><div class="card stack"><div class="seg"><button data-unit="lb" aria-pressed="'+(UNIT()==='lb')+'">Libras</button><button data-unit="kg" aria-pressed="'+(UNIT()==='kg')+'">Kilos</button></div><p class="small muted" style="margin:0">Solo cambia la etiqueta y el paso de los botones +/–. No convierte lo que ya registraste. Tu peso corporal sigue en kg.</p></div>';
   h+='<h2>Copia de seguridad</h2><div class="card stack"><p class="muted small" style="margin:0">Tus datos viven en este dispositivo. Copia la seguridad de vez en cuando y pégala en tus Notas. Para pasar los datos a otro dispositivo, pégala allá y toca Restaurar.</p><div class="row" style="flex-wrap:wrap"><button class="btn" id="bkcopy">Copiar copia</button><button class="btn ghost" id="bkrestore">Restaurar</button></div><textarea id="bktext" rows="3" placeholder="Pega aquí tu copia para restaurarla" style="resize:vertical"></textarea><div class="small muted" id="bkmsg"></div></div>';
   return h;
 }
 function histView(){
   var dates=Object.keys(state.days).filter(function(dt){var l=state.days[dt].log;return l&&Object.keys(l).some(function(id){return doneSets(l[id]).length})}).sort().reverse();
   if(!dates.length)return '<div class="card"><p class="muted" style="margin:0">Todavía no hay entrenamientos registrados. Cuando marques series como hechas, aparecerán aquí y podrás corregirlas, moverlas de fecha o borrarlas.</p></div>';
-  return '<p class="muted small">Toca un día para corregir kilos o repeticiones. Los cambios se guardan solos.</p><div class="stack">'+dates.map(function(dt){
+  return '<p class="muted small">Toca un día para corregir '+UL()+' o repeticiones. Los cambios se guardan solos.</p><div class="stack">'+dates.map(function(dt){
     var l=state.days[dt].log,p=dayPlan(dt),body='';
     Object.keys(EXMAP).forEach(function(id){
       if(!l[id]||!doneSets(l[id]).length)return;
       body+='<div class="hex"><div class="exn">'+esc(EXMAP[id][1])+'</div>';
       l[id].forEach(function(s,i){if(!s.done)return;
-        body+='<div class="hset"><span class="sn">'+(i+1)+'</span><input type="text" inputmode="decimal" data-h="'+dt+'|'+id+'|'+i+'|kg" value="'+esc(s.kg)+'" aria-label="Kilos"><input type="text" inputmode="numeric" data-h="'+dt+'|'+id+'|'+i+'|reps" value="'+esc(s.reps)+'" aria-label="Repeticiones"><button class="xbtn" data-hdel="'+dt+'|'+id+'|'+i+'" aria-label="Borrar serie">✕</button></div>'});
+        body+='<div class="hset"><span class="sn">'+(i+1)+'</span><input type="text" inputmode="decimal" data-h="'+dt+'|'+id+'|'+i+'|kg" value="'+esc(s.kg)+'" aria-label="'+UL()+'"><input type="text" inputmode="numeric" data-h="'+dt+'|'+id+'|'+i+'|reps" value="'+esc(s.reps)+'" aria-label="Repeticiones"><button class="xbtn" data-hdel="'+dt+'|'+id+'|'+i+'" aria-label="Borrar serie">✕</button></div>'});
       var key='ex|'+dt+'|'+id;
       body+='<button class="mini" data-hrm="'+dt+'|'+id+'">'+(armed===key?'¿Seguro? Toca otra vez':'Quitar ejercicio del día')+'</button></div>';
     });
@@ -521,7 +524,7 @@ function viewGym(){
   h+='<div class="card"><div class="scroll"><table><thead><tr><th>Día</th><th>Fuerza</th><th>Cardio</th></tr></thead><tbody><tr><td>Martes</td><td>Pecho y tríceps</td><td>Caminata inclinada</td></tr><tr><td>Miércoles</td><td>Pierna</td><td>Intervalos</td></tr><tr><td>Jueves</td><td>Espalda, bíceps y core</td><td>Caminata inclinada</td></tr><tr><td>Viernes</td><td>Pecho y hombros</td><td>Intervalos</td></tr><tr><td>Sábado</td><td>Pierna, empuje y core</td><td>Caminata inclinada</td></tr><tr><td>Domingo</td><td colspan="2">Fútbol o caminata larga</td></tr><tr><td>Lunes</td><td colspan="2">Descanso</td></tr></tbody></table></div></div>';
   h+='<h2>Rutinas</h2><div class="stack">';
   ['A','D','B','C','E'].forEach(function(k){h+='<div class="card"><details><summary>'+({A:'Martes',D:'Miércoles',B:'Jueves',C:'Viernes',E:'Sábado'}[k])+' · '+esc(SESS[k].name)+'</summary><div style="margin-top:8px">'+exTable(k)+'</div></details></div>'});
-  h+='</div><h2>Cómo hacerlo</h2><div class="card"><ul class="plain"><li><b>Sigues en ayunas</b> si te funciona. Toma agua al despertar y desayuna dentro de la hora siguiente al entreno. Si una serie pesada te marea, come una fruta 20 minutos antes.</li><li><b>Reserva:</b> semana 1 termina con 2 repeticiones sin hacer, semanas 2 y 3 con 1. Nunca sacrifiques la técnica por subir peso.</li><li><b>Progresión:</b> cuando llegues al máximo de repeticiones en todas las series, sube 2.5 a 5 kg la próxima vez.</li><li><b>Pecho:</b> baja 2 segundos, pausa corta abajo, sube fuerte. En cruces y pec deck, aprieta al cerrar.</li><li><b>Abdomen:</b> el core ayuda a verse firme, pero la grasa de la barriga baja con el déficit de calorías, los pasos y el cardio. No existe un ejercicio que queme la grasa de una zona.</li><li><b>Cigarrillo:</b> no te lo voy a prohibir, pero te quita aire en el cardio y recuperación. Meta mínima: no fumes la hora antes de entrenar y baja la cantidad.</li><li><b>Si un día no puedes:</b> haz al menos 30 minutos y sigue al día siguiente con la rutina que toca. No dobles sesiones.</li></ul></div>';
+  h+='</div><h2>Cómo hacerlo</h2><div class="card"><ul class="plain"><li><b>Sigues en ayunas</b> si te funciona. Toma agua al despertar y desayuna dentro de la hora siguiente al entreno. Si una serie pesada te marea, come una fruta 20 minutos antes.</li><li><b>Reserva:</b> semana 1 termina con 2 repeticiones sin hacer, semanas 2 y 3 con 1. Nunca sacrifiques la técnica por subir peso.</li><li><b>Progresión:</b> cuando llegues al máximo de repeticiones en todas las series, sube '+(UNIT()==='lb'?'5 a 10 libras':'2.5 a 5 kg')+' la próxima vez.</li><li><b>Pecho:</b> baja 2 segundos, pausa corta abajo, sube fuerte. En cruces y pec deck, aprieta al cerrar.</li><li><b>Abdomen:</b> el core ayuda a verse firme, pero la grasa de la barriga baja con el déficit de calorías, los pasos y el cardio. No existe un ejercicio que queme la grasa de una zona.</li><li><b>Cigarrillo:</b> no te lo voy a prohibir, pero te quita aire en el cardio y recuperación. Meta mínima: no fumes la hora antes de entrenar y baja la cantidad.</li><li><b>Si un día no puedes:</b> haz al menos 30 minutos y sigue al día siguiente con la rutina que toca. No dobles sesiones.</li></ul></div>';
   h+='<h2>Cardio</h2><div class="stack"><div class="card"><h3>'+CARDIO.walk.t+' · 20 min</h3><p class="muted" style="margin:0">'+CARDIO.walk.s+'</p></div><div class="card"><h3>'+CARDIO.hiit.t+' · 20 min</h3><p class="muted" style="margin:0">'+CARDIO.hiit.s+'</p></div></div>';
   return h;
 }
@@ -561,7 +564,7 @@ function maybeAutoTrain(){
 
 /* ---------- eventos ---------- */
 document.addEventListener('click',function(ev){
-  var el=ev.target.closest('[data-tab],[data-chk],[data-nav],[data-open],[data-done],[data-addset],[data-delset],[data-ptab],[data-hideinst],[data-focus],[data-startgym],[data-fclose],[data-fnav],[data-step],[data-pr],[data-pm],[data-hdel],[data-hrm],[data-hmove],#bkcopy,#bkrestore');if(!el)return;
+  var el=ev.target.closest('[data-tab],[data-chk],[data-nav],[data-open],[data-done],[data-addset],[data-delset],[data-ptab],[data-hideinst],[data-focus],[data-startgym],[data-fclose],[data-fnav],[data-step],[data-pr],[data-pm],[data-hdel],[data-hrm],[data-hmove],[data-unit],#bkcopy,#bkrestore');if(!el)return;
   if(el.dataset.tab){gym.open=false;tab=el.dataset.tab;try{localStorage.setItem(LS+'-tab',tab)}catch(e){}render();window.scrollTo(0,0);return}
   if(el.dataset.chk){var d=day(cur);d.chk[el.dataset.chk]=!d.chk[el.dataset.chk];save();render();return}
   if(el.dataset.nav){gym.open=false;var t=fmt(new Date());if(el.dataset.nav==='today')cur=t<START?START:(t>END?END:t);else{var n=addDays(cur,+el.dataset.nav);if(n>=START&&n<=END)cur=n}render();return}
@@ -572,11 +575,12 @@ document.addEventListener('click',function(ev){
   if(el.dataset.focus!==undefined){gym={open:true,idx:+el.dataset.focus};render();window.scrollTo(0,0);return}
   if(el.dataset.fclose!==undefined){gym.open=false;render();window.scrollTo(0,0);return}
   if(el.dataset.fnav){var p1=dayPlan(cur),n1=gym.idx+(+el.dataset.fnav);if(n1>=0&&n1<SESS[p1.kind].ex.length){gym.idx=n1;render();window.scrollTo(0,0)}return}
+  if(el.dataset.unit){state.unit=el.dataset.unit;save();render();return}
   if(el.dataset.pr){pr=el.dataset.pr;render();return}
   if(el.dataset.pm){pm=el.dataset.pm;render();return}
   if(el.dataset.step){
     var q=el.dataset.step.split('|'),f=q[0],dir=+q[1],row0=el.closest('.sc'),inp=row0.querySelector('[data-f='+f+']');
-    var base=num(inp.value)||num(inp.placeholder)||0,nv=Math.max(0,base+dir*(f==='kg'?2.5:1));nv=Math.round(nv*100)/100;
+    var base=num(inp.value)||num(inp.placeholder)||0,nv=Math.max(0,base+dir*(f==='kg'?(UNIT()==='lb'?5:2.5):1));nv=Math.round(nv*100)/100;
     inp.value=String(nv);var sx=ensureLog(cur,SESS[dayPlan(cur).kind].ex[gym.idx])[+row0.dataset.i];sx[f]=inp.value;save();
     if(sx.done){var pb=document.querySelector('.ftitle .prbox');if(pb)pb.innerHTML=prBadge(SESS[dayPlan(cur).kind].ex[gym.idx][0],cur)}
     return;
@@ -618,7 +622,7 @@ document.addEventListener('click',function(ev){
   }
   if(el.id==='bkrestore'){
     var m=document.getElementById('bkmsg');
-    try{var o=JSON.parse(document.getElementById('bktext').value);if(!o||typeof o.days!=='object')throw 0;state={days:o.days||{},meas:o.meas||{}};save();render();m=document.getElementById('bkmsg');m.textContent='Datos restaurados.'}catch(e){m.textContent='No pude leer ese texto. Pega la copia completa.'}
+    try{var o=JSON.parse(document.getElementById('bktext').value);if(!o||typeof o.days!=='object')throw 0;state={days:o.days||{},meas:o.meas||{},unit:o.unit==='kg'?'kg':'lb'};save();render();m=document.getElementById('bkmsg');m.textContent='Datos restaurados.'}catch(e){m.textContent='No pude leer ese texto. Pega la copia completa.'}
   }
 });
 document.addEventListener('input',function(ev){
