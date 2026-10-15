@@ -228,7 +228,7 @@ var restOf=function(e){var n=parseFloat(e[3]);return /min/.test(e[3])?Math.round
 var e1=function(kg,reps){return kg*(1+reps/30)};
 var CARDIO={
  walk:{t:'Caminata inclinada',s:'Cinta al 10–12 % de inclinación, 5.5–6 km/h. Debes poder hablar, entrecortado. Sin apoyarte en las barras.'},
- hiit:{t:'Intervalos',s:'Bici o elíptica. 4 min suave, luego 8 × (30 s fuerte / 60 s suave), 4 min suave para cerrar.'}
+ hiit:{t:'Intervalos',s:'Bici o elíptica. 4 min suave, luego de 8 a 11 series de 30 s fuerte / 60 s suave (la app te indica cuántas), 4 min suave para cerrar.'}
 };
 var BYDOW={2:['A','walk'],3:['D','walk'],4:['B','walk'],5:['C','hiit'],6:['E','walk']};
 var KIND_LABEL={A:'Pecho',B:'Espalda',C:'Pecho+H',D:'Pierna',E:'Pierna+',rest:'Descanso',foot:'Fútbol',trip:'Viaje',nutri:'Comida'};
@@ -241,7 +241,7 @@ function dayPlan(s){
   if(m){
     var p={kind:m[0],cardio:m[1],title:SESS[m[0]].name,label:KIND_LABEL[m[0]],gym:true};
     if(s==='2026-10-09'){p.opt=true;p.sub='Si logras pasar por el gimnasio antes del viaje. Si no, no cuenta en contra.'}
-    if(s==='2026-11-04'){p.sub='Sesión final. Buen pump, sin buscar récords. Mañana viajas.'}
+    if(s==='2026-11-04'){p.sub='Última sesión antes del viaje. Sin buscar récords: mañana viajas.'}
     return p;
   }
   if(dow===0) return {kind:'foot',label:'Fútbol',title:'Fútbol o descanso activo',sub:'Si juegas, cuenta como tu cardio. Si no, caminata larga.'};
@@ -250,17 +250,22 @@ function dayPlan(s){
 function phase(s){
   if(s<'2026-10-13') return ['Arranque','Come bien y camina. En el viaje: proteína en cada comida y alcohol con límite.'];
   if(s<'2026-10-20') return ['Semana 1 · Base','Aprende la rutina. Termina cada serie con 2 repeticiones de reserva y anota tus pesos.'];
-  if(s<'2026-10-27') return ['Semana 2 · Carga','Sube el peso donde llegaste al tope de repeticiones. Mismo orden, más carga.'];
-  if(s<'2026-11-03') return ['Semana 3 · Máximo','Series al límite (1 repetición de reserva) y cardio de 25 min en vez de 20.'];
+  if(s<'2026-10-27') return ['Semana 2 · Carga','Sube el peso donde llegaste al tope de repeticiones. Mismo orden, más carga. Caminata de 25 min.'];
+  if(s<'2026-11-03') return ['Semana 3 · Máximo','Series al límite (1 repetición de reserva). Cardio: caminata de 30 min e intervalos de 25.'];
   return ['Cierre','No hagas nada nuevo ni extremo. Come normal, toma agua, duerme.'];
 }
 var MEAL={bk:['Desayuno','Después del gimnasio · ~500 kcal · 35–40 g de proteína'],lu:['Almuerzo','~700 kcal · 50–55 g de proteína'],sn:['Merienda','~300 kcal · 30 g de proteína'],di:['Cena','~600 kcal · 45–50 g de proteína']};
+function cardioMin(s,kind){
+  var w=s<'2026-10-20'?1:(s<'2026-10-27'?2:(s<'2026-11-03'?3:4));
+  if(kind==='hiit')return w===3?25:20;
+  return w===2?25:(w===3?30:20);
+}
 function items(s,p){
   var L=[],dow=parse(s).getDay();
   if(p.gym){
-    var c=CARDIO[p.cardio],min=phase(s)[0]==='Semana 3 · Máximo'?25:20;
+    var c=CARDIO[p.cardio],min=cardioMin(s,p.cardio);
     L.push({k:'train',t:'Fuerza · '+p.title,sub:'Se marca sola al registrar todas las series. Márcala tú si entrenaste sin la app.',opt:p.opt});
-    L.push({k:'cardio',t:'Cardio · '+c.t+' '+min+' min',sub:c.s,opt:p.opt});
+    L.push({k:'cardio',t:'Cardio · '+c.t+' '+min+' min',sub:(p.cardio==='hiit'?'Bici o elíptica. 4 min suave, luego '+Math.round((min-8)/1.5)+' × (30 s fuerte / 60 s suave), 4 min suave para cerrar.':c.s),opt:p.opt});
   }
   if(p.kind==='foot') L.push({k:'foot',t:'Fútbol o caminata de 45 min',sub:'Cualquiera de las dos cuenta'});
   ['bk','lu','sn','di'].forEach(function(k){L.push({k:k,t:MEAL[k][0],sub:MEAL[k][1]})});
@@ -471,7 +476,7 @@ function viewFocus(){
   return out;
 }
 function isStandalone(){return window.navigator.standalone===true||(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)}
-var VERSION='v6 · sesiones de 60 min';
+var VERSION='v7 · pesas 60 min + cardio 20–30';
 function needsBackup(){
   var n=Object.keys(state.days).filter(function(k){var d=state.days[k];return Object.keys(d.chk||{}).length||Object.keys(d.log||{}).some(function(id){return doneSets(d.log[id]).length})}).length;
   return n>=2&&(!state.lastBackup||Date.now()-state.lastBackup>7*86400000);
@@ -523,7 +528,7 @@ function viewMes(){
     h+='<button class="'+cls+'" data-open="'+s2+'"><b>'+parse(s2).getDate()+'</b><span>'+(inr?esc(p.label):'')+'</span></button>';
   }
   h+='</div></div>';
-  var ps=[['Arranque · 8 al 12 oct','Comida y pasos. El gimnasio de ese viernes es opcional y el fin de semana es de viaje.'],['Semana 1 · 13 al 19 oct','Base. Aprende la rutina y anota pesos.'],['Semana 2 · 20 al 26 oct','Carga. Sube peso donde llegaste al tope.'],['Semana 3 · 27 oct al 2 nov','Máximo. Series más cerca del límite y cardio de 25 min.'],['Cierre · 3 y 4 nov','Descanso el lunes, sesión final de pecho el martes.']];
+  var ps=[['Arranque · 8 al 12 oct','Comida y pasos. El gimnasio de ese viernes es opcional y el fin de semana es de viaje.'],['Semana 1 · 13 al 19 oct','Base. Aprende la rutina y anota pesos.'],['Semana 2 · 20 al 26 oct','Carga. Sube peso donde llegaste al tope y caminata de 25 min.'],['Semana 3 · 27 oct al 2 nov','Máximo. Series más cerca del límite, caminata de 30 min e intervalos de 25.'],['Cierre · 3 y 4 nov','Martes pecho y tríceps, miércoles pierna. Sin buscar récords: el jueves viajas.']];
   h+='<h2>Fases</h2><div class="card">'+ps.map(function(x){return '<div class="rule" style="grid-template-columns:1fr"><div><b>'+x[0]+'</b><div class="muted small">'+x[1]+'</div></div></div>'}).join('')+'</div>';
   return h;
 }
@@ -641,12 +646,12 @@ function viewProg(){
 /* ---------- entreno y comida (referencia) ---------- */
 function exTable(k){return '<div class="scroll"><table><thead><tr><th>Ejercicio</th><th>Series × reps</th><th>Descanso</th></tr></thead><tbody>'+SESS[k].ex.map(function(e){return '<tr><td>'+esc(e[1])+'</td><td>'+esc(e[2])+'</td><td>'+esc(e[3])+'</td></tr>'}).join('')+'</tbody></table></div>'}
 function viewGym(){
-  var h='<h2 style="margin-top:6px">Entreno</h2><p class="muted">Cinco días de pesas de 60 minutos y 20 de cardio. El pecho se trabaja dos veces por semana. El domingo es fútbol, el lunes descanso.</p>';
+  var h='<h2 style="margin-top:6px">Entreno</h2><p class="muted">Cinco días de pesas de 60 minutos y de 20 a 30 minutos de cardio, hasta 90 minutos en total. El pecho se trabaja dos veces por semana. El domingo es fútbol, el lunes descanso.</p>';
   h+='<div class="card"><div class="scroll"><table><thead><tr><th>Día</th><th>Fuerza</th><th>Cardio</th></tr></thead><tbody><tr><td>Martes</td><td>Pecho y tríceps</td><td>Caminata inclinada</td></tr><tr><td>Miércoles</td><td>Pierna</td><td>Caminata inclinada</td></tr><tr><td>Jueves</td><td>Espalda, bíceps y core</td><td>Caminata inclinada</td></tr><tr><td>Viernes</td><td>Pecho y hombros</td><td>Intervalos</td></tr><tr><td>Sábado</td><td>Pierna, empuje y core</td><td>Caminata inclinada</td></tr><tr><td>Domingo</td><td colspan="2">Fútbol o caminata larga</td></tr><tr><td>Lunes</td><td colspan="2">Descanso</td></tr></tbody></table></div></div>';
   h+='<h2>Rutinas</h2><div class="stack">';
   ['A','D','B','C','E'].forEach(function(k){h+='<div class="card"><details><summary>'+({A:'Martes',D:'Miércoles',B:'Jueves',C:'Viernes',E:'Sábado'}[k])+' · '+esc(SESS[k].name)+'</summary><div style="margin-top:8px">'+exTable(k)+'</div></details></div>'});
-  h+='</div><h2>Cómo hacerlo</h2><div class="card"><ul class="plain"><li><b>Sigues en ayunas</b> si te funciona. Toma agua al despertar y desayuna dentro de la hora siguiente al entreno. Si una serie pesada te marea, come una fruta 20 minutos antes.</li><li><b>Calentamiento (8 a 10 min):</b> 5 minutos de cinta o bici suave y 2 o 3 series de aproximación en el primer ejercicio, con pesos cada vez más cercanos al de trabajo.</li><li><b>Descansos:</b> 3 minutos en sentadilla y press de banca, 2.5 en el press inclinado de los viernes y lo que marca la app en el resto. Es el descanso que te deja rendir en las series siguientes.</li><li><b>Duración:</b> unos 50 a 56 minutos de pesas con calentamiento, más 20 de cardio.</li><li><b>Reserva:</b> semana 1 termina con 2 repeticiones sin hacer, semanas 2 y 3 con 1. Nunca sacrifiques la técnica por subir peso.</li><li><b>Progresión:</b> cuando llegues al máximo de repeticiones en todas las series, sube '+(UNIT()==='lb'?'5 a 10 libras':'2.5 a 5 kg')+' la próxima vez.</li><li><b>Pecho:</b> baja 2 segundos, pausa corta abajo, sube fuerte. En cruces y pec deck, aprieta al cerrar.</li><li><b>Abdomen:</b> el core ayuda a verse firme, pero la grasa de la barriga baja con el déficit de calorías, los pasos y el cardio. No existe un ejercicio que queme la grasa de una zona.</li><li><b>Cigarrillo:</b> no te lo voy a prohibir, pero te quita aire en el cardio y recuperación. Meta mínima: no fumes la hora antes de entrenar y baja la cantidad.</li><li><b>Si un día no puedes:</b> haz al menos 30 minutos y sigue al día siguiente con la rutina que toca. No dobles sesiones.</li></ul></div>';
-  h+='<h2>Cardio</h2><div class="stack"><div class="card"><h3>'+CARDIO.walk.t+' · 20 min</h3><p class="muted" style="margin:0">'+CARDIO.walk.s+'</p></div><div class="card"><h3>'+CARDIO.hiit.t+' · 20 min</h3><p class="muted" style="margin:0">'+CARDIO.hiit.s+'</p></div></div>';
+  h+='</div><h2>Cómo hacerlo</h2><div class="card"><ul class="plain"><li><b>Sigues en ayunas</b> si te funciona. Toma agua al despertar y desayuna dentro de la hora siguiente al entreno. Si una serie pesada te marea, come una fruta 20 minutos antes.</li><li><b>Calentamiento (8 a 10 min):</b> 5 minutos de cinta o bici suave y 2 o 3 series de aproximación en el primer ejercicio, con pesos cada vez más cercanos al de trabajo.</li><li><b>Descansos:</b> 3 minutos en sentadilla y press de banca, 2.5 en el press inclinado de los viernes y lo que marca la app en el resto. Es el descanso que te deja rendir en las series siguientes.</li><li><b>Duración:</b> unos 50 a 56 minutos de pesas con calentamiento, más 20 a 30 de cardio según la semana.</li><li><b>Reserva:</b> semana 1 termina con 2 repeticiones sin hacer, semanas 2 y 3 con 1. Nunca sacrifiques la técnica por subir peso.</li><li><b>Progresión:</b> cuando llegues al máximo de repeticiones en todas las series, sube '+(UNIT()==='lb'?'5 a 10 libras':'2.5 a 5 kg')+' la próxima vez.</li><li><b>Pecho:</b> baja 2 segundos, pausa corta abajo, sube fuerte. En cruces y pec deck, aprieta al cerrar.</li><li><b>Abdomen:</b> el core ayuda a verse firme, pero la grasa de la barriga baja con el déficit de calorías, los pasos y el cardio. No existe un ejercicio que queme la grasa de una zona.</li><li><b>Cigarrillo:</b> no te lo voy a prohibir, pero te quita aire en el cardio y recuperación. Meta mínima: no fumes la hora antes de entrenar y baja la cantidad.</li><li><b>Si un día no puedes:</b> haz al menos 30 minutos y sigue al día siguiente con la rutina que toca. No dobles sesiones.</li></ul></div>';
+  h+='<h2>Cardio</h2><div class="stack"><div class="card"><h3>'+CARDIO.walk.t+' · 20 a 30 min</h3><p class="muted" style="margin:0">'+CARDIO.walk.s+'</p></div><div class="card"><h3>'+CARDIO.hiit.t+' · 20 a 25 min</h3><p class="muted" style="margin:0">'+CARDIO.hiit.s+'</p></div></div>';
   return h;
 }
 function viewFood(){
